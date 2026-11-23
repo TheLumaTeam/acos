@@ -1,0 +1,8 @@
+/target/
+/.direnv/
+/result
+*.qcow2
+*.raw
+*.img
+*.iso
+.DS_Store

@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ACOS</title>
+  <style>
+    :root { color-scheme: dark; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; color: #f4f4f4; }
+    .identity { position: absolute; inset: 38px 24px auto; display: flex; align-items: center; justify-content: center; gap: 13px; }
+    .logo { width: 54px; height: 54px; object-fit: contain; }
+    .fallback { width: 54px; height: 54px; display: grid; place-items: center; border: 1px solid #333; border-radius: 15px; color: #fff; font-size: 25px; font-weight: 600; }
+    .agent-name { color: #eee; font-size: 15px; font-weight: 500; letter-spacing: .02em; }
+    main { position: absolute; inset: 50% 24px auto; transform: translateY(-50%); display: flex; justify-content: center; }
+    .launcher { width: min(920px, 100%); padding: 26px; border: 1px solid #242424; border-radius: 20px; background: linear-gradient(145deg, #111 0%, #080808 62%, #0d0d0d 100%); box-shadow: 0 24px 90px #000a; }
+    .launcher-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 0 2px 20px; }
+    .launcher-title { color: #f3f3f3; font-size: 16px; font-weight: 600; letter-spacing: .01em; }
+    .launcher-hint { color: #686868; font-size: 11px; }
+    .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)); gap: 10px; }
+    .app { min-width: 0; min-height: 148px; padding: 17px 10px 14px; border: 1px solid #242424; border-radius: 13px; background: #141414; color: #eee; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 11px; font: inherit; cursor: pointer; transition: transform .14s ease, background .14s ease, border-color .14s ease; }
+    .app:hover, .app:focus-visible { transform: translateY(-3px); background: #202020; border-color: #555; outline: none; }
+    .icon-wrap { width: 58px; height: 58px; display: grid; place-items: center; border-radius: 15px; background: #242424; box-shadow: inset 0 1px #ffffff0b, 0 5px 15px #0005; }
+    .app-icon { width: 42px; height: 42px; object-fit: contain; }
+    .glyph { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 11px; color: #ddd; font-size: 20px; font-weight: 600; }
+    .app-copy { width: 100%; display: grid; gap: 4px; text-align: center; }
+    .name { overflow: hidden; color: #eee; font-size: 12px; font-weight: 550; text-overflow: ellipsis; white-space: nowrap; }
+    .description { overflow: hidden; color: #777; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .empty { color: #777; font-size: 13px; }
+    @media (max-width: 620px) { .launcher { padding: 17px; } .apps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .app { min-height: 126px; } }
+  </style>
+</head>
+<body>
+  <header class="identity">
+    <img class="logo" id="logo" src="/agent-logo" alt="" hidden>
+    <div class="fallback" id="fallback" aria-hidden="true">A</div>
+    <div class="agent-name" id="agent-name">ACOS Agent</div>
+  </header>
+  <main><section class="launcher" aria-label="Application launcher">
+    <div class="launcher-head"><span class="launcher-title">Your applications</span><span class="launcher-hint">Select an app to open</span></div>
+    <div class="apps" id="apps" aria-label="Applications"><p class="empty">Loading applications…</p></div>
+  </section></main>
+  <script>
+    const apps = document.querySelector('#apps');
+    const logo = document.querySelector('#logo');
+    const fallback = document.querySelector('#fallback');
+    const agentName = document.querySelector('#agent-name');
+    fetch('/api/identity').then(r => r.json()).then(identity => {
+      agentName.textContent = identity.name || 'ACOS Agent';
+      fallback.textContent = (identity.name || 'A').trim().charAt(0).toUpperCase();
+      if (identity.logo) {
+        logo.hidden = false;
+        fallback.hidden = true;
+      }
+    }).catch(() => {});
+    fetch('/api/apps').then(r => r.json()).then(items => {
+      apps.replaceChildren();
+      if (!items.length) {
+        const empty = document.createElement('p');
+        empty.className = 'empty';
+        empty.textContent = 'No graphical applications installed';
+        apps.append(empty);
+        return;
+      }
+      for (const item of items) {
+        const button = document.createElement('button');
+        button.className = 'app';
+        button.type = 'button';
+        const iconWrap = document.createElement('span');
+        iconWrap.className = 'icon-wrap';
+        const glyph = document.createElement('span');
+        glyph.className = 'glyph';
+        glyph.textContent = item.name.trim().charAt(0).toUpperCase();
+        if (item.icon) {
+          const icon = document.createElement('img');
+          icon.className = 'app-icon';
+          icon.src = item.icon;
+          icon.alt = '';
+          icon.addEventListener('error', () => icon.replaceWith(glyph));
+          iconWrap.append(icon);
+        } else {
+          iconWrap.append(glyph);
+        }
+        const name = document.createElement('span');
+        name.className = 'name';
+        name.textContent = item.name;
+        const description = document.createElement('span');
+        description.className = 'description';
+        description.textContent = item.description || 'Application';
+        const copy = document.createElement('span');
+        copy.className = 'app-copy';
+        copy.append(name, description);
+        button.append(iconWrap, copy);
+        button.addEventListener('click', () => fetch('/api/launch', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: item.id })
+        }));
+        apps.append(button);
+      }
+    }).catch(() => { apps.textContent = 'Unable to load applications'; });
+  </script>
+</body>
+</html>

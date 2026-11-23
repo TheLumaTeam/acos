@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+profile="runtime"
+output=""
+show_help=0
+
+usage() {
+  cat <<'EOF'
+Usage: build/acos-build [--profile runtime|developer] [--out-link PATH]
+
+Build a reproducible ARM64 ACOS QCOW2 disk image using the pinned build flake.
+The build requires an aarch64-linux Nix builder (local or configured remote).
+
+Options:
+  -p, --profile PROFILE   Image profile (default: runtime)
+  -o, --out-link PATH     Nix result symlink (default: result-acos-PROFILE)
+  -h, --help              Show this help
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+    -p|--profile)
+      (($# >= 2)) || { echo "Missing value for $1" >&2; exit 2; }
+      profile="$2"
+      shift 2
+      ;;
+    -o|--out-link)
+      (($# >= 2)) || { echo "Missing value for $1" >&2; exit 2; }
+      output="$2"
+      shift 2
+      ;;
+    -h|--help)
+      show_help=1
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+if ((show_help)); then usage; exit 0; fi
+case "$profile" in
+  runtime|developer) ;;
+  *) echo "Unsupported profile '$profile' (choose runtime or developer)" >&2; exit 2 ;;
+esac
+
+if [[ -z "$output" ]]; then output="result-acos-$profile"; fi
+exec nix build "$script_dir#${profile}" --out-link "$output"

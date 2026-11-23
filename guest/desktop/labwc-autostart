@@ -1,0 +1,11 @@
+#!/bin/sh
+# Give the QEMU Virtio display a usable desktop-sized mode. The first line
+# reported by wlr-randr is the connected output (normally Virtual-1 in QEMU).
+output="$(wlr-randr | awk 'NR == 1 { print $1 }')"
+if [ -n "$output" ]; then
+    wlr-randr --output "$output" --mode 1440x900 2>/dev/null \
+        || wlr-randr --output "$output" --mode 1280x800 2>/dev/null \
+        || true
+fi
+
+acos-desktop &
