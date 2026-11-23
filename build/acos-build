@@ -51,4 +51,7 @@ case "$profile" in
 esac
 
 if [[ -z "$output" ]]; then output="result-acos-$profile"; fi
-exec nix build "$script_dir#${profile}" --out-link "$output"
+# The image derivations are Linux packages even when this script is invoked
+# from an Apple Silicon Mac. Select the builder system explicitly instead of
+# letting Nix infer aarch64-darwin from the host.
+exec nix build "$script_dir#packages.aarch64-linux.${profile}" --out-link "$output"

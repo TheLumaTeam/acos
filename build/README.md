@@ -34,9 +34,16 @@ reproducible when invoked directly from `build/`.
 Equivalent direct Nix commands:
 
 ```sh
-nix build ./build#runtime
-nix build ./build#developer
+nix build ./build#packages.aarch64-linux.runtime
+nix build ./build#packages.aarch64-linux.developer
 ```
+
+The fully qualified package attributes are important on macOS: Nix otherwise
+tries to resolve `runtime` or `developer` for the host system (`aarch64-darwin`),
+but these images are Linux derivations and are exposed under
+`packages.aarch64-linux`. The `acos-build` helper selects the correct
+attributes automatically. An `aarch64-linux` local or remote builder is still
+required to execute the build.
 
 To choose the result link, pass `--out-link PATH` to the script or `--out-link`
 to `nix build`. The output directory contains:
